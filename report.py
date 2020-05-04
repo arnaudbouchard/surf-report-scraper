@@ -32,6 +32,7 @@ def get_report_data(report_url):
 def main():
     # get all links on page
     url = 'https://www.surf-report.com/reports/'
+
     # get all a elements where link starts with '/reports/' and element title starts with 'Report'
     html = requests.get(url)
     soup = BeautifulSoup(html.text, 'html.parser')
