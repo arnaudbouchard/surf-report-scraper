@@ -1,7 +1,8 @@
 import boto3
 from botocore.exceptions import NoCredentialsError
 from bs4 import BeautifulSoup
-from datetime import date
+from datetime import date, datetime
+import dateparser
 import json
 import os
 import re
@@ -73,16 +74,26 @@ def main():
     for report in reports:
         url = 'https://www.surf-report.com' + report['href']
         print('URL: {}'.format(url))
+
+        # get report data
         data = get_report_data(url)
-        data['url'] = url
-        reports_data.append(data)
 
-    # write in files
-    with open('reports.json', 'w') as outfile:
-        json.dump(reports_data, outfile, ensure_ascii=False)
+        # format surf-report date into datetime object
+        report_date_obj = dateparser.parse(data['Date'], languages=['fr'])
 
-    return upload_to_aws('reports.json', S3_REPORTS_BUCKET,
-                         date.today().strftime("%Y-%m-%d") + '.json')
+        # only save reports from present day
+        if (datetime.today() - report_date_obj).days == 0:
+            data['Date'] = report_date_obj.strftime('%Y-%m-%d %H:%M:%S')
+            data['url'] = url
+            reports_data.append(data)
+
+    # write in files and upload if we have at least 1 report
+    if len(reports_data) > 0:
+        with open('reports.json', 'w') as outfile:
+            json.dump(reports_data, outfile, ensure_ascii=False)
+
+        return upload_to_aws('reports.json', S3_REPORTS_BUCKET,
+                             date.today().strftime("%Y-%m-%d") + '.json')
 
 
 if __name__ == '__main__':
