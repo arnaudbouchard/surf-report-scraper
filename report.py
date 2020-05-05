@@ -8,9 +8,9 @@ import os
 import re
 import requests
 
+# import env vars
 from dotenv import load_dotenv
 load_dotenv()
-
 S3_ACCESS_KEY = os.environ['S3_ACCESS_KEY']
 S3_SECRET_KEY = os.environ['S3_SECRET_KEY']
 S3_REPORTS_BUCKET = os.environ['S3_REPORTS_BUCKET']
@@ -70,9 +70,14 @@ def main():
         'title': re.compile('^Report')
     })
 
-    reports_data = []
+    reports_deduped = []
     for report in reports:
-        url = 'https://www.surf-report.com' + report['href']
+        if report['href'] not in reports_deduped:
+            reports_deduped.append(report['href'])
+
+    reports_data = []
+    for report in reports_deduped:
+        url = 'https://www.surf-report.com' + report
         print('URL: {}'.format(url))
 
         # get report data
