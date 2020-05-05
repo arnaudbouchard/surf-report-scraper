@@ -1,7 +1,18 @@
+import boto3
+from botocore.exceptions import NoCredentialsError
+from bs4 import BeautifulSoup
+from datetime import date
+import json
+import os
 import re
 import requests
-from bs4 import BeautifulSoup
-import json
+
+from dotenv import load_dotenv
+load_dotenv()
+
+S3_ACCESS_KEY = os.environ['S3_ACCESS_KEY']
+S3_SECRET_KEY = os.environ['S3_SECRET_KEY']
+S3_REPORTS_BUCKET = os.environ['S3_REPORTS_BUCKET']
 
 
 def get_report_data(report_url):
@@ -29,6 +40,23 @@ def get_report_data(report_url):
     return formattedRecap
 
 
+def upload_to_aws(local_file, bucket, s3_file):
+    s3 = boto3.client('s3',
+                      aws_access_key_id=S3_ACCESS_KEY,
+                      aws_secret_access_key=S3_SECRET_KEY)
+
+    try:
+        s3.upload_file(local_file, bucket, s3_file)
+        print('Upload Successful')
+        return True
+    except FileNotFoundError:
+        print('The file was not found')
+        return False
+    except NoCredentialsError:
+        print('Credentials not available')
+        return False
+
+
 def main():
     # get all links on page
     url = 'https://www.surf-report.com/reports/'
@@ -50,9 +78,11 @@ def main():
         reports_data.append(data)
 
     # write in files
-    with open('reports.txt', 'a') as file:
-        for data in reports_data:
-            file.write('{}\n'.format(data))
+    with open('reports.json', 'w') as outfile:
+        json.dump(reports_data, outfile, ensure_ascii=False)
+
+    return upload_to_aws('reports.json', S3_REPORTS_BUCKET,
+                         date.today().strftime("%Y-%m-%d") + '.json')
 
 
 if __name__ == '__main__':
