@@ -15,6 +15,10 @@ S3_ACCESS_KEY = os.environ['S3_ACCESS_KEY']
 S3_SECRET_KEY = os.environ['S3_SECRET_KEY']
 S3_REPORTS_BUCKET = os.environ['S3_REPORTS_BUCKET']
 
+# constants
+REPORT_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+FILE_DATE_FORMAT = '%Y-%m-%d'
+
 
 def get_report_data(report_url):
     html = requests.get(report_url)
@@ -77,8 +81,8 @@ def main():
 
     reports_data = []
     for report in reports_deduped:
-        url = 'https://www.surf-report.com' + report
-        print('URL: {}'.format(url))
+        url = f'https://www.surf-report.com{report}'
+        print(f'URL: {url}')
 
         # get report data
         data = get_report_data(url)
@@ -88,7 +92,7 @@ def main():
 
         # only save reports from present day
         if (datetime.today() - report_date_obj).days == 0:
-            data['Date'] = report_date_obj.strftime('%Y-%m-%d %H:%M:%S')
+            data['Date'] = report_date_obj.strftime(REPORT_DATE_FORMAT)
             data['url'] = url
             reports_data.append(data)
 
@@ -97,8 +101,10 @@ def main():
         with open('reports.json', 'w') as outfile:
             json.dump(reports_data, outfile, ensure_ascii=False)
 
+        today = date.today().strftime(FILE_DATE_FORMAT)
+
         return upload_to_aws('reports.json', S3_REPORTS_BUCKET,
-                             date.today().strftime("%Y-%m-%d") + '.json')
+                             f'{today}.json')
 
 
 if __name__ == '__main__':
